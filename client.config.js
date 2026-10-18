@@ -1,4 +1,6 @@
 module.exports = {
+    // Keep the legacy minifier from starting a worker farm on modern Node.
+    optimization: { minimize: false },
     entry: './src/client/client.ts',
     module: {
         rules: [

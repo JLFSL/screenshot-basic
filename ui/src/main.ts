@@ -14,6 +14,7 @@ import {
 } from '@citizenfx/three';
 
 class ScreenshotRequest {
+    crop?: { x: number; y: number; width: number; height: number };
     encoding: 'jpg' | 'png' | 'webp';
     quality: number;
     headers: any;
@@ -186,10 +187,28 @@ class ScreenshotUI {
         }
 
         // actual encoding
-        const imageURL = canvas.toDataURL(type, request.quality);
+        let output = canvas;
+        if (request.crop) {
+            const crop = request.crop;
+            const values = [crop.x, crop.y, crop.width, crop.height];
+            if (!values.every(v => Number.isFinite(v) && v >= 0 && v <= 1)
+                || crop.width <= 0 || crop.height <= 0
+                || crop.x + crop.width > 1.00001 || crop.y + crop.height > 1.00001) return;
+            const sx = Math.floor(crop.x * canvas.width);
+            const sy = Math.floor(crop.y * canvas.height);
+            const sw = Math.min(canvas.width - sx, Math.ceil(crop.width * canvas.width));
+            const sh = Math.min(canvas.height - sy, Math.ceil(crop.height * canvas.height));
+            output = document.createElement('canvas');
+            const scale = Math.min(1, 1280 / sw, 960 / sh);
+            output.width = Math.max(1, Math.round(sw * scale));
+            output.height = Math.max(1, Math.round(sh * scale));
+            output.getContext('2d').drawImage(canvas, sx, sy, sw, sh, 0, 0, output.width, output.height);
+        }
+        const imageURL = output.toDataURL(type, request.quality);
 
         const getFormData = () => {
             const formData = new FormData();
+            if (request.crop) formData.append('hdnCropApplied', '1');
             formData.append(request.targetField, dataURItoBlob(imageURL), `screenshot.${request.encoding}`);
 
             return formData;

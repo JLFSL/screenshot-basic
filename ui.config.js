@@ -2,6 +2,8 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const HtmlWebpackInlineSourcePlugin = require('html-webpack-inline-source-plugin');
 
 module.exports = {
+    // Keep the legacy minifier from starting a worker farm on modern Node.
+    optimization: { minimize: false },
     entry: './ui/src/main.ts',
     module: {
         rules: [

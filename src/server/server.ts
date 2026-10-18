@@ -12,6 +12,7 @@ const app = new Koa();
 const router = new Router();
 
 class UploadData {
+    cropRequired: boolean;
     fileName: string;
 
     cb: (err: string | boolean, data: string) => void;
@@ -36,6 +37,15 @@ router.post('/upload/:token', async (ctx) => {
         }
 
         const f = ctx.request.files['file'] as File;
+
+        // An older client UI silently ignores the crop option. Never accept its
+        // full-screen output as a vehicle photo; require the updated UI to confirm.
+        if (upload.cropRequired && (!ctx.request.body || ctx.request.body.hdnCropApplied !== '1')) {
+            if (f) fs.unlink(f.path, () => {});
+            finish('Voertuiguitsnede ontbreekt. Herstart screenshot-basic en probeer opnieuw.', null);
+            ctx.body = { success: false };
+            return;
+        }
 
         if (f) {
             if (upload.fileName) {
@@ -80,6 +90,7 @@ setHttpCallback(app.callback());
 
 // Cfx stuff
 const exp = (<any>global).exports;
+exp('vehiclePhotoCaptureVersion', () => 2);
 
 exp('requestClientScreenshot', (player: string | number, options: any, cb: (err: string | boolean, data: string) => void) => {
     const tkn = v4();
@@ -88,6 +99,7 @@ exp('requestClientScreenshot', (player: string | number, options: any, cb: (err:
     delete options['fileName']; // so the client won't get to know this
 
     uploads[tkn] = {
+        cropRequired: !!options.crop,
         fileName,
         cb
     };
